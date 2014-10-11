@@ -5,7 +5,7 @@ package airbrake;
 
 import java.util.*;
 
-import org.apache.log4j.*;
+import org.apache.logging.log4j.ThreadContext;
 
 public class AirbrakeNoticeBuilderUsingFilteredSystemProperties extends AirbrakeNoticeBuilder {
 
@@ -19,7 +19,7 @@ public class AirbrakeNoticeBuilderUsingFilteredSystemProperties extends Airbrake
 
     private void addMDCToSession() {
         @SuppressWarnings("unchecked")
-        Map<String, Object> map = MDC.getContext();
+        Map<String, String> map = ThreadContext.getContext();
 
         if (map != null) {
             addSessionKey(":key", Integer.toString(map.hashCode()));

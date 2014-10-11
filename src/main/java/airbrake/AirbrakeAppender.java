@@ -3,49 +3,48 @@
 // Licensed under the Apache License, Version 2.0 (the "License")
 package airbrake;
 
-import org.apache.log4j.*;
-import org.apache.log4j.spi.*;
+import java.io.Serializable;
+import org.apache.logging.log4j.core.Filter;
+import org.apache.logging.log4j.core.Layout;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.plugins.Plugin;
+import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
+import org.apache.logging.log4j.core.config.plugins.PluginElement;
+import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 
-public class AirbrakeAppender extends AppenderSkeleton {
+@Plugin(name = "AirbrakeAppender", category = "Core", elementType = "appender")
+public class AirbrakeAppender extends AbstractAppender {
 
     private final AirbrakeNotifier airbrakeNotifier = new AirbrakeNotifier();
 
-    private String apiKey;
-
-    private String env;
-
-    private boolean enabled;
-
+    private final String name;
+    private final String apiKey;
+    private final String env;
     private Backtrace backtrace = new Backtrace();
 
-    public AirbrakeAppender() {
-        setThreshold(Level.ERROR);
+    public AirbrakeAppender(String name, String apiKey, String env, Filter filter, Layout<? extends Serializable> layout, boolean ignoreExceptions) {
+        super(name, filter, layout, ignoreExceptions);
+        this.name = name;
+        this.apiKey = apiKey;
+        this.env = env;
     }
 
-    public AirbrakeAppender(final String apiKey) {
-        setApi_key(apiKey);
-        setThreshold(Level.ERROR);
-    }
-
-    public AirbrakeAppender(final String apiKey, final Backtrace backtrace) {
-        setApi_key(apiKey);
-        setBacktrace(backtrace);
-        setThreshold(Level.ERROR);
+    @PluginFactory
+    public static AirbrakeAppender createAppender(@PluginAttribute("name") String name,
+            @PluginAttribute("apiKey") String apiKey,
+            @PluginAttribute("env") String env,
+            @PluginElement("Layout") Layout layout,
+            @PluginElement("Filters") Filter filter) {
+        AirbrakeAppender appender = new AirbrakeAppender(name, apiKey, env, filter, layout, false);
+        return appender;
     }
 
     @Override
-    protected void append(final LoggingEvent loggingEvent) {
-        if (!enabled) {
-            return;
-        }
-
+    public void append(final LogEvent loggingEvent) {
         if (thereIsThrowableIn(loggingEvent)) {
             notifyThrowableIn(loggingEvent);
         }
-    }
-
-    @Override
-    public void close() {
     }
 
     public AirbrakeNotice newNoticeFor(final Throwable throwable) {
@@ -53,29 +52,8 @@ public class AirbrakeAppender extends AppenderSkeleton {
                 backtrace, throwable, env).newNotice();
     }
 
-    private int notifyThrowableIn(final LoggingEvent loggingEvent) {
+    private int notifyThrowableIn(final LogEvent loggingEvent) {
         return airbrakeNotifier.notify(newNoticeFor(throwable(loggingEvent)));
-    }
-
-    @Override
-    public boolean requiresLayout() {
-        return false;
-    }
-
-    public void setApi_key(final String apiKey) {
-        this.apiKey = apiKey;
-    }
-
-    public void setBacktrace(final Backtrace backtrace) {
-        this.backtrace = backtrace;
-    }
-
-    public void setEnabled(final boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public void setEnv(final String env) {
-        this.env = env;
     }
 
     public void setUrl(final String url) {
@@ -88,8 +66,8 @@ public class AirbrakeAppender extends AppenderSkeleton {
      * @param loggingEvent
      * @return
      */
-    private boolean thereIsThrowableIn(final LoggingEvent loggingEvent) {
-        return loggingEvent.getThrowableInformation() != null
+    private boolean thereIsThrowableIn(final LogEvent loggingEvent) {
+        return loggingEvent.getThrown() != null
                 || loggingEvent.getMessage() instanceof Throwable;
     }
 
@@ -102,18 +80,8 @@ public class AirbrakeAppender extends AppenderSkeleton {
      * @return The Throwable contained in the {@link LoggingEvent} or null if
      * there is none.
      */
-    private Throwable throwable(final LoggingEvent loggingEvent) {
-        ThrowableInformation throwableInfo = loggingEvent.getThrowableInformation();
-        if (throwableInfo != null) {
-            return throwableInfo.getThrowable();
-        }
-
-        Object message = loggingEvent.getMessage();
-        if (message instanceof Throwable) {
-            return (Throwable) message;
-        }
-
-        return null;
+    private Throwable throwable(final LogEvent loggingEvent) {
+        return loggingEvent.getThrown();
     }
 
     protected String getApiKey() {
