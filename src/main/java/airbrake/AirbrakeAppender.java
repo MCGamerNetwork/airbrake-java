@@ -16,27 +16,34 @@ import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 @Plugin(name = "AirbrakeAppender", category = "Core", elementType = "appender")
 public class AirbrakeAppender extends AbstractAppender {
 
-    private final AirbrakeNotifier airbrakeNotifier = new AirbrakeNotifier();
+    private final AirbrakeNotifier airbrakeNotifier;
 
     private final String name;
     private final String apiKey;
     private final String env;
     private Backtrace backtrace = new Backtrace();
 
-    public AirbrakeAppender(String name, String apiKey, String env, Filter filter, Layout<? extends Serializable> layout, boolean ignoreExceptions) {
+    public AirbrakeAppender(String name, String apiKey, String env, Filter filter, String url, Layout<? extends Serializable> layout, boolean ignoreExceptions) {
         super(name, filter, layout, ignoreExceptions);
         this.name = name;
         this.apiKey = apiKey;
         this.env = env;
+        
+        if (url == null) {
+            this.airbrakeNotifier = new AirbrakeNotifier();
+        } else {
+            this.airbrakeNotifier = new AirbrakeNotifier(url);
+        }
     }
 
     @PluginFactory
     public static AirbrakeAppender createAppender(@PluginAttribute("name") String name,
             @PluginAttribute("apiKey") String apiKey,
             @PluginAttribute("env") String env,
+            @PluginAttribute("notifyUrl") String url,
             @PluginElement("Layout") Layout layout,
             @PluginElement("Filters") Filter filter) {
-        AirbrakeAppender appender = new AirbrakeAppender(name, apiKey, env, filter, layout, false);
+        AirbrakeAppender appender = new AirbrakeAppender(name, apiKey, env, filter, url, layout, false);
         return appender;
     }
 
